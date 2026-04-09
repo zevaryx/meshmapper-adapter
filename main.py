@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from fastapi import FastAPI, Path
@@ -61,6 +61,7 @@ async def receive(request: WebhookRequest):
             "url": f"https://{request.region.lower()}.meshmapper.net/",
             "description": request.message,
             "color": event_meta["color"],
+            "timestamp": datetime.fromtimestamp(request.timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
             "fields": []
         }]
     }
