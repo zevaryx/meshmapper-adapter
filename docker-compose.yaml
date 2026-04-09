@@ -1,0 +1,5 @@
+services:
+  adapter:
+    container_name: meshmapper-adapter
+    restart: unless-stopped
+    build: .

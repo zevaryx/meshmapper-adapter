@@ -75,7 +75,7 @@ async def receive(request: WebhookRequest):
         payload["embeds"][0]["fields"].append({"name": key, "value": value})
         
     for webhook in settings.webhooks:
-        if not webhook.regions or request.region in webhook.regions:
+        if not webhook.regions or request.region in webhook.regions or len(webhook.regions) == 0:
             payload["username"] = webhook.name
             resp = await client.post(str(webhook.url), json=payload, headers=headers)
             resp.raise_for_status()

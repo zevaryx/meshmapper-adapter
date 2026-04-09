@@ -1,4 +1,9 @@
 ---
-wehbooks:
+webhooks:
   - name: MeshMapper
-    url: https://discord.com/...
+    url: https://discord.com/api/webhooks/...
+    regions:
+      - List
+      - Of
+      - IATA
+      - Codes
