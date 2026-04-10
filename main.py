@@ -48,6 +48,8 @@ event_lookup = {
     }
 }
 
+skip_data = ["duplicate_repeater", "visitor_message"]
+
 @app.post("/")
 async def receive(request: WebhookRequest):
     logging.debug(f"Received request of type {request.event}")
@@ -66,14 +68,15 @@ async def receive(request: WebhookRequest):
         }]
     }
     
-    for key, value in request.data.items():
-        key = key.replace("_", " ").capitalize()
-        if isinstance(value, list):
-            value = "\n".join(value)
-        elif not isinstance(value, str):
-            value = str(value)
-            
-        payload["embeds"][0]["fields"].append({"name": key, "value": value})
+    if request.event not in skip_data:
+        for key, value in request.data.items():
+            key = key.replace("_", " ").capitalize()
+            if isinstance(value, list):
+                value = "\n".join(value)
+            elif not isinstance(value, str):
+                value = str(value)
+                
+            payload["embeds"][0]["fields"].append({"name": key, "value": value})
         
     for webhook in settings.webhooks:
         if not webhook.regions or request.region in webhook.regions or len(webhook.regions) == 0:
