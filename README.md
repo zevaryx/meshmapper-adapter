@@ -17,6 +17,6 @@ This adapter also supports 3rd party API collection via the `/ingest` endpoint, 
 
 To use, use the following URL, replacing `your.website.tld` with your URL:
 
-`meshmapper://custom-api?url=your.website.tld/ingest`
+`https://your.website.tld/ingest`
 
-**NOTE**: This currently does not use an API key, allowing any user to submit data. This will be added soon
+For the API key, please use your Discord username (or another unique identifier, like HAM callsign). This will link pings to you on the backend for your admins to use
