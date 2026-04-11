@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from beanie import Document, init_beanie
+from beanie import Document, Link, init_beanie
 from pydantic import BaseModel, Field
 from pymongo import AsyncMongoClient
 
 from settings import Settings
+
+class APIKey(Document):
+    key: str
 
 class Event(Document):
     event: str
@@ -24,6 +27,7 @@ class PingObject(Document):
     power: str | None
     contact: str | None = None
     iata: str | None = None
+    key: Link[APIKey] | None = None
     
 class TXPingObject(PingObject):
     heard_repeats: str
@@ -59,6 +63,6 @@ async def connect(settings: Settings) -> bool:
     
     db = client.meshmapper
     
-    await init_beanie(database=db, document_models=[Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject])
+    await init_beanie(database=db, document_models=[APIKey, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject])
     
     return True

@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 import logging
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from aiohttp import ClientSession
 
-from db import connect, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject
+from db import connect, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject, APIKey
 from models import WebhookRequest, IngestRequest
 from settings import Settings
 
@@ -92,7 +92,7 @@ async def receive(request: WebhookRequest):
                 
         if db_initialized:
             try:
-                await Event(**request.model_dump()).insert()
+                await Event(**request.model_dump()).save()
             except Exception as e:
                 logging.warning(f"Failed to save DB model, setting db_initialized to False: {e}")
                 db_initialized = False
@@ -100,21 +100,27 @@ async def receive(request: WebhookRequest):
         logging.critical(f"Failed to process webhook event! {e}", exc_info=True)
         
 @app.post("/ingest")
-async def ingest(request: IngestRequest):
+async def ingest(request: IngestRequest, x_api_key: Annotated[str | None, Header()] = None):
     global db_initialized
     try:
         if not db_initialized:
             # We can't log if no database has been configured
             return
         for ping in request.data:
+            key = None
+            if x_api_key:
+                key = await APIKey.find_one(APIKey.key == x_api_key)
+                if not key:
+                    key = APIKey(key=x_api_key)
+                    await key.save()
             if ping["type"] == "TX":
-                await TXPingObject(**ping).insert()
+                await TXPingObject(**ping, key=key).save()
             elif ping["type"] == "RX":
-                await RXPingObject(**ping).insert()
+                await RXPingObject(**ping, key=key).save()
             elif ping["type"] == "DISC":
-                await DISCPingObject(**ping).insert()
+                await DISCPingObject(**ping, key=key).save()
             elif ping["type"] == "TRACE":
-                await TRACEPingObject(**ping).insert()
+                await TRACEPingObject(**ping, key=key).save()
             else:
                 logging.warning(f"Unknown ping type: {ping['type']}")
     except Exception as e:
