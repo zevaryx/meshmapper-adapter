@@ -1,9 +1,20 @@
 ---
 webhooks:
   - name: MeshMapper
+    # Change the URL to point to your webhook!
     url: https://discord.com/api/webhooks/...
+    # Change the regions to your regions, 
+    # or remove to listen to all regions sent to this webhook
     regions:
       - List
       - Of
       - IATA
       - Codes
+
+# MongoDB backing store
+# Uses the default settings from docker-compose.yaml
+mongo:
+  host: mongodb
+  port: 27017
+  username: meshmapper
+  password: meshmapper

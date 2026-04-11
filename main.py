@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI, Path
 from aiohttp import ClientSession
 
+from db import connect, Event
 from models import WebhookRequest
 from settings import Settings
 
@@ -13,12 +14,17 @@ logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
 settings = Settings.load_settings("config.yaml")
 
 client: ClientSession
+db_initialized = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global client
+    global client, db_initialized
     logging.debug("Starting app")
     client = ClientSession()
+    try:
+        db_initialized = await connect(settings)
+    except Exception as e:
+        logging.warning(f"Failed to initialize MongoDB backend: {e}")
     yield
     await client.close()
     logging.debug("Closing app")
@@ -50,6 +56,7 @@ event_lookup = {
 
 @app.post("/")
 async def receive(request: WebhookRequest):
+    global db_initialized
     try:
         logging.debug(f"Received request of type {request.event}")
         headers = {"Content-Type": "application/json"}
@@ -82,5 +89,12 @@ async def receive(request: WebhookRequest):
                 payload["username"] = webhook.name
                 resp = await client.post(str(webhook.url), json=payload, headers=headers)
                 resp.raise_for_status()
+                
+        if db_initialized:
+            try:
+                await Event(**request.model_dump()).insert()
+            except Exception as e:
+                logging.warning(f"Failed to save DB model, setting db_initialized to False: {e}")
+                db_initialized = False
     except Exception as e:
         logging.critical(f"Failed to process webhook event! {e}", exc_info=True)
