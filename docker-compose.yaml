@@ -2,6 +2,8 @@ services:
   api:
     restart: unless-stopped
     build: .
+    ports:
+      - '8080:80'
     depends_on: mongodb
   mongodb:
     image: mongodb/mongodb-community-server:8.0-ubi8
