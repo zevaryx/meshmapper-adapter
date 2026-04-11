@@ -48,38 +48,39 @@ event_lookup = {
     }
 }
 
-skip_data = ["duplicate_repeater", "visitor_message"]
-
 @app.post("/")
 async def receive(request: WebhookRequest):
-    logging.debug(f"Received request of type {request.event}")
-    headers = {"Content-Type": "application/json"}
-    event_meta = event_lookup.get(request.event, {"name": request.event.replace("_", " ").capitalize(), "color": "15549029 "})
-    
-    payload = {
-        "username": "",
-        "embeds": [{
-            "title": f"New Event in {request.region}: {event_meta['name']}",
-            "url": f"https://{request.region.lower()}.meshmapper.net/",
-            "description": request.message,
-            "color": event_meta["color"],
-            "timestamp": datetime.fromtimestamp(request.timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
-            "fields": []
-        }]
-    }
-    
-    if request.event not in skip_data:
-        for key, value in request.data.items():
-            key = key.replace("_", " ").capitalize()
-            if isinstance(value, list):
-                value = "\n".join(value)
-            elif not isinstance(value, str):
-                value = str(value)
-                
-            payload["embeds"][0]["fields"].append({"name": key, "value": value})
+    try:
+        logging.debug(f"Received request of type {request.event}")
+        headers = {"Content-Type": "application/json"}
+        event_meta = event_lookup.get(request.event, {"name": request.event.replace("_", " ").capitalize(), "color": "15549029 "})
         
-    for webhook in settings.webhooks:
-        if not webhook.regions or request.region in webhook.regions or len(webhook.regions) == 0:
-            payload["username"] = webhook.name
-            resp = await client.post(str(webhook.url), json=payload, headers=headers)
-            resp.raise_for_status()
+        payload = {
+            "username": "",
+            "embeds": [{
+                "title": f"New Event in {request.region}: {event_meta['name']}",
+                "url": f"https://{request.region.lower()}.meshmapper.net/",
+                "description": request.message,
+                "color": event_meta["color"],
+                "timestamp": datetime.fromtimestamp(request.timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+                "fields": []
+            }]
+        }
+        
+        if request.event not in ["visitor_message", "duplicate_repeater"]:
+            for key, value in request.data.items():
+                key = key.replace("_", " ").capitalize()
+                if isinstance(value, list):
+                    value = "\n".join(value)
+                elif not isinstance(value, str):
+                    value = str(value)
+                    
+                payload["embeds"][0]["fields"].append({"name": key, "value": value})
+            
+        for webhook in settings.webhooks:
+            if not webhook.regions or request.region in webhook.regions or len(webhook.regions) == 0:
+                payload["username"] = webhook.name
+                resp = await client.post(str(webhook.url), json=payload, headers=headers)
+                resp.raise_for_status()
+    except Exception as e:
+        logging.critical(f"Failed to process webhook event! {e}", exc_info=True)
