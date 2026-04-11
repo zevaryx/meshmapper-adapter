@@ -2,11 +2,11 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
 
-from fastapi import FastAPI, Path
+from fastapi import FastAPI
 from aiohttp import ClientSession
 
-from db import connect, Event
-from models import WebhookRequest
+from db import connect, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject
+from models import WebhookRequest, IngestRequest
 from settings import Settings
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
@@ -54,7 +54,7 @@ event_lookup = {
     }
 }
 
-@app.post("/")
+@app.post("/webhook")
 async def receive(request: WebhookRequest):
     global db_initialized
     try:
@@ -69,7 +69,7 @@ async def receive(request: WebhookRequest):
                 "url": f"https://{request.region.lower()}.meshmapper.net/",
                 "description": request.message,
                 "color": event_meta["color"],
-                "timestamp": datetime.fromtimestamp(request.timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+                "timestamp": request.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
                 "fields": []
             }]
         }
@@ -98,3 +98,24 @@ async def receive(request: WebhookRequest):
                 db_initialized = False
     except Exception as e:
         logging.critical(f"Failed to process webhook event! {e}", exc_info=True)
+        
+@app.post("/ingest")
+async def ingest(request: IngestRequest):
+    global db_initialized
+    try:
+        if not db_initialized:
+            # We can't log if no database has been configured
+            return
+        for ping in request.data:
+            if ping["type"] == "TX":
+                await TXPingObject(**ping).insert()
+            elif ping["type"] == "RX":
+                await RXPingObject(**ping).insert()
+            elif ping["type"] == "DISC":
+                await DISCPingObject(**ping).insert()
+            elif ping["type"] == "TRACE":
+                await TRACEPingObject(**ping).insert()
+            else:
+                logging.warning(f"Unknown ping type: {ping['type']}")
+    except Exception as e:
+        logging.critical(f"Failed to process ingest event! {e}", exc_info=True)
