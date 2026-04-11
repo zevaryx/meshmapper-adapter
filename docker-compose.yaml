@@ -1,5 +1,14 @@
 services:
-  adapter:
-    container_name: meshmapper-adapter
+  api:
     restart: unless-stopped
     build: .
+    depends_on: mongodb
+  mongodb:
+    image: mongodb/mongodb-community-server:8.0-ubi8
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=meshmapper
+      - MONGO_INITDB_ROOT_PASSWORD=meshmapper
+    volumes:
+      - type: bind
+        source: ./mongodb
+        target: /data/db

@@ -21,9 +21,16 @@ class Webhook(BaseModel):
     
     regions: list[str] | None = None
     """Regions to process, all regions if None"""
+    
+class Mongo(BaseModel):
+    host: str | list[str] = "localhost"
+    username: str | None = None
+    password: str | None = None
+    port: int = 27017
 
 class Settings(BaseSettings):
     webhooks: list[Webhook] = Field(default_factory=list)
+    mongo: Mongo | None = None
     
     @classmethod
     def load_settings(cls: type[Self], path: str | Path = Path("config.yaml")) -> Self:
