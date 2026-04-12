@@ -19,4 +19,4 @@ To use, use the following URL, replacing `your.website.tld` with your URL:
 
 `https://your.website.tld/ingest`
 
-For the API key, please use your Discord username (or another unique identifier, like HAM callsign). This will link pings to you on the backend for your admins to use
+For the API key, please go to the `/docs` URL and manually modify the info under `/api/v1/auth/register` section to register. Clunky, but temporary until there's a registration page
