@@ -2,12 +2,13 @@ from contextlib import asynccontextmanager
 import logging
 from typing import Annotated
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, HTTPException, Header
 from aiohttp import ClientSession
 
-from db import connect, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject, APIKey
+from meshmapper_adapter.api.v1 import router as api_v1_router
+from meshmapper_adapter.db import connect, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject, User
 from models import WebhookRequest, IngestRequest
-from settings import Settings
+from meshmapper_adapter.settings import Settings
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
 
@@ -15,6 +16,14 @@ settings = Settings.load_settings("config.yaml")
 
 client: ClientSession
 db_initialized = False
+
+description = """
+# MeshMapper Webhook Adapter
+
+## Getting Started
+
+Point your MeshMapper regions at your domain to start processing events!
+"""
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,7 +38,21 @@ async def lifespan(app: FastAPI):
     await client.close()
     logging.debug("Closing app")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="MeshMapper Adapter",
+    description=description,
+    summary="A MeshMapper Webhook and API adapter",
+    contact = {
+        "name": "zevaryx",
+        "url": "https://github.com/zevaryx/meshapper-adapter",
+    },
+    license_info = {
+        "name": "MIT",
+        "identifier": "MIT",
+    },
+    lifespan=lifespan,
+)
+app.include_router(api_v1_router)
 
 event_lookup = {
     "duplicate_repeater": {
@@ -54,7 +77,7 @@ event_lookup = {
     }
 }
 
-@app.post("/webhook")
+@app.post("/webhook", include_in_schema=False)
 async def receive(request: WebhookRequest):
     global db_initialized
     try:
@@ -99,7 +122,7 @@ async def receive(request: WebhookRequest):
     except Exception as e:
         logging.critical(f"Failed to process webhook event! {e}", exc_info=True)
         
-@app.post("/ingest")
+@app.post("/ingest", include_in_schema=False)
 async def ingest(request: IngestRequest, x_api_key: Annotated[str | None, Header()] = None):
     global db_initialized
     try:
@@ -107,20 +130,17 @@ async def ingest(request: IngestRequest, x_api_key: Annotated[str | None, Header
             # We can't log if no database has been configured
             return
         for ping in request.data:
-            key = None
-            if x_api_key:
-                key = await APIKey.find_one(APIKey.key == x_api_key)
-                if not key:
-                    key = APIKey(key=x_api_key)
-                    await key.save()
+            user = await User.find_one(User.api_key == x_api_key)
+            if not user:
+                raise HTTPException(status_code=404, detail="api key not found")
             if ping["type"] == "TX":
-                await TXPingObject(**ping, key=key).save()
+                await TXPingObject(**ping, user=user).save() # type: ignore
             elif ping["type"] == "RX":
-                await RXPingObject(**ping, key=key).save()
+                await RXPingObject(**ping, user=user).save() # type: ignore
             elif ping["type"] == "DISC":
-                await DISCPingObject(**ping, key=key).save()
+                await DISCPingObject(**ping, user=user).save() # type: ignore
             elif ping["type"] == "TRACE":
-                await TRACEPingObject(**ping, key=key).save()
+                await TRACEPingObject(**ping, user=user).save() # type: ignore
             else:
                 logging.warning(f"Unknown ping type: {ping['type']}")
     except Exception as e:

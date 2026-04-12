@@ -11,4 +11,4 @@ RUN uv sync --locked
 #CMD ["fastapi", "run", "app/main.py", "--port", "80"]
 
 # If running behind a proxy like Nginx or Traefik add --proxy-headers
-CMD ["uv", "run", "fastapi", "run", "main.py", "--port", "80", "--proxy-headers"]
+CMD ["uv", "run", "fastapi", "run", "--port", "80", "--proxy-headers"]
