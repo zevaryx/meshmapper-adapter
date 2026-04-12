@@ -7,7 +7,7 @@ from aiohttp import ClientSession
 
 from meshmapper_adapter.api.v1 import router as api_v1_router
 from meshmapper_adapter.db import connect, Event, TXPingObject, RXPingObject, DISCPingObject, TRACEPingObject, User
-from models import WebhookRequest, IngestRequest
+from meshmapper_adapter.models import WebhookRequest, IngestRequest
 from meshmapper_adapter.settings import Settings
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
